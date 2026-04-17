@@ -34,6 +34,13 @@ sudo ./record_cam.sh
 # Once you see ffmpeg recording data in the terminal, cut power and power back up. Install complete.
 ```
 
+## Post-install status
+
+After install/reboot, you can observe with:
+```bash
+journalctl -f -t DASHCAM
+```
+
 Once initialized, CamForge Dash will:
 
 * Detect all cameras
