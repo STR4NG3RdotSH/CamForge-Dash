@@ -21,7 +21,7 @@ Built for reliability and long-term use, it handles camera management, storage c
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start (Attach camera(s) and USB storage first!)
 
 ```bash
 # 1. Install ffmpeg
