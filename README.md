@@ -13,6 +13,7 @@ Built for reliability and long-term use, it handles camera management, storage c
 * **Automatic camera detection** – Finds and configures all connected `/dev/video*` devices
 * **Multi-camera support** – Record from as many cameras as your Pi can handle
 * **Plug-and-play setup** – One-time script execution builds the entire system
+* **Automated detection after-the-fact** – Swap out cameras or USB storage by simply powering down and swapping. Automatically detected and re-configured to use the new devices on boot.
 * **Continuous recording** – Saves looped video segments automatically
 * **Self-healing** – Restarts recording if `ffmpeg` stops
 * **Storage management** – Deletes oldest footage based on disk usage or file count
