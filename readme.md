@@ -13,6 +13,7 @@ Built for reliability and long-term use, it handles camera management, storage c
 * **Automatic camera detection** – Finds and configures all connected `/dev/video*` devices
 * **Multi-camera support** – Record from as many cameras as your Pi can handle
 * **Plug-and-play setup** – One-time script execution builds the entire system
+* **Automated detection after-the-fact** – Swap out cameras or USB storage by simply powering down and swapping. Automatically detected and re-configured to use the new devices on boot.
 * **Continuous recording** – Saves looped video segments automatically
 * **Self-healing** – Restarts recording if `ffmpeg` stops
 * **Storage management** – Deletes oldest footage based on disk usage or file count
@@ -20,15 +21,24 @@ Built for reliability and long-term use, it handles camera management, storage c
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start (Attach camera(s) and USB storage first!)
 
 ```bash
 # 1. Install ffmpeg
 sudo apt install ffmpeg -y
 
 # 2. Run the script
+# Put record_cam.sh in a suitable home (/home/pi for instance)
 chmod +x record_cam.sh
 sudo ./record_cam.sh
+# Once you see ffmpeg recording data in the terminal, disconnect power to the pi and plug it back in. Install complete. It should be automatically recording while it is powered up (Can take a minute to begin)
+```
+
+## Post-install status
+
+After install/reboot, you can observe with:
+```bash
+journalctl -f -t DASHCAM
 ```
 
 Once initialized, CamForge Dash will:
@@ -61,14 +71,14 @@ This script will:
 
   * **Keep-alive monitoring**
   * **Disk cleanup automation**
-* Stores all footage on external USB storage to protect the OS
+* Stores all footage on external USB storage to protect the OS/system drive/SD
 
 ---
 
 ## 🔧 Requirements
 
-* Raspberry Pi (Pi 4 recommended, Pi 5 for 3+ cameras)
-* USB webcams (unique serial numbers required for multi-cam setups)
+* Raspberry Pi (Pi Zero series sufficient for single camera setups, Pi 4 or better recommended, Pi 5 for 3+ cameras)
+* USB webcams (unique serial numbers required for multi-cam setups. To see if your cam conforms to serial number norms you can run this to see what its SN is: `v4l2-ctl --device=/dev/videoX --all | grep -oP 'Serial\s*:\s*\K.*'` where /dev/videoX is your camera's device path)
 * External USB storage (FAT32 recommended)
 * `ffmpeg`, `v4l2-ctl`, `arecord`
 
@@ -82,10 +92,90 @@ This script will:
 
 ---
 
-## 🛣️ Future Ideas
+## 📦 My Usage (Real-World Setup)
 
+CamForge Dash was developed and tested over several years in a real vehicle environment using a fully DIY setup. It’s very much a hobbyist system, but stable enough that it has been running continuously in daily use.
+
+The goal was simple: turn the Raspberry Pi into a self-contained multi-camera dashcam system with zero maintenance once installed.
+
+## 🔧 Hardware in my Setup (Downgraded from 4 standard cameras to 2 180deg cameras, for performance. Previous links left for posterity.)
+* ~~Power inverter: https://www.amazon.ca/dp/B08YTH66FN~~
+* Bluetti Elite 10 Mini PS: https://www.amazon.ca/dp/B0FS6CBVZG
+* 3-way power splitter: https://www.amazon.ca/dp/B098CC6W68
+* USB hubs: https://www.amazon.ca/dp/B000T9S4CI
+* Raspberry Pi 5: https://www.raspberrypi.com/products/raspberry-pi-5/
+* ~~Mobile router: https://www.amazon.ca/dp/B01N5RCZQH~~
+* ~~Cameras (Anker PowerConf C200 used in testing): https://www.amazon.ca/dp/B09MFMTMPD~~
+* USB Mic (x2): https://www.amazon.ca/dp/B0CNVZ27YH
+* InnoMaker Camera Module (x2:): https://www.amazon.ca/dp/B0CNCSFQC1
+* Fisheye lens (x2): https://www.amazon.ca/dp/B07D4G7QST
+
+```bash
+#             Vehicle Lighter Port             
+#                       │                      
+#          ┌────────────▼────────────┐         
+#          │Bluetti Elite 10 Mini PS │         
+#          └────────────┬────────────┘
+#              ┌────────▼─────────┐            
+#           ┌──┼3 way pwr splitter┼─┐          
+#           │  └────────┬─────────┘ │
+#       ┌───▼───┐  ┌────▼────┐  ┌───▼───┐      
+#     ┌─┼USB hub┼──┼ Pi5 16G ┼──┼USB hub┼─┐    
+#     │ └┬─────┬┘  └─────────┘  └──────┬┘ │
+#     │  │┌────┴──────┐                │  │ 
+#     │  ││USB Storage│                │  │    
+#     │  │└───────────┘                │  │    
+#     │  │                             │  │ 
+#     │  └───────┐            ┌────────┘  │ 
+#  ┌──┴────┐  ┌──┴───┐    ┌───┴──┐    ┌───┴───┐ 
+#  │USB Mic│  │Camera│    │Camera│    │USB Mic│ 
+#  └───────┘  └──────┘    └──────┘    └───────┘ 
+```
+
+## 🧠 Notes From Long-Term Use
+* Storage reliability is the main failure point (USB health matters most)
+* Powered USB hubs significantly improve multi-camera stability
+* Some low-cost webcams may fail multi-device serial identification
+* System performs best when left fully automated (no manual intervention after boot)
+* 4 cameras seems too much even for Pi5 16g (Starts dropping videos from random cameras). 3 cameras is much more stable but still drops some, while 2 cameras seems fairly flawless.
+
+## ⚙️ Philosophy
+This setup is intentionally unpolished but resilient:
+* No cloud dependency
+* No external time reliance
+* No manual camera configuration
+* Designed to recover itself after power loss or crash
+
+## 🧭 Why CamForge Dash Exists
+Most Raspberry Pi dashcam solutions are either overly simplified single-camera scripts or tightly coupled systems that require significant manual setup, configuration tuning, and ongoing maintenance.
+
+CamForge Dash was created to solve a different problem: building a reliable, multi-camera dashcam system that can be deployed once and left running indefinitely in real-world conditions.
+
+In practice, vehicle-based recording systems face constraints that traditional software projects often ignore:
+
+* Unreliable or absent internet connectivity
+* Power interruptions and abrupt shutdowns
+* Variable and low-quality USB camera hardware
+* Integrated storage that will eventually fail
+* The need for automatic recovery without user intervention
+
+CamForge Dash is designed around these realities.
+
+Rather than requiring a carefully curated hardware and software stack, it takes a self-configuring, defensive approach:
+
+* Easy updates, simply put record_cam.sh onto your USB storage and the system will update to it on boot.
+* Cameras are discovered dynamically at boot
+* Each device is isolated and mapped using hardware identifiers
+* Recording processes are continuously monitored and restarted if needed
+* Storage is actively managed to prevent system failure
+* All critical components are generated automatically on first run and re-generated as needed
+
+The result is a system that behaves less like a traditional script and more like a self-maintaining recording appliance.
+
+This project is not intended to be the most configurable or feature-rich dashcam system—it is designed to be predictable, resilient, and low-maintenance in environments where failure is not convenient to debug.
+
+## 🛣️ Future Ideas
 * External display for live status
-* Improved power handling for multi-camera setups
 * Configurable recording settings via UI or config file
 
 ---
