@@ -8,6 +8,18 @@ Built for reliability and long-term use, it handles camera management, storage c
 
 ---
 
+## ⚠️ Warning
+
+This script will:
+
+* Modify mount points
+* Create cron jobs
+* Continuously write video to attached USB storage
+
+**Do not run on your primary system (PC, laptop, etc). Use a dedicated Raspberry Pi.**
+
+---
+
 ## 🚀 Features
 
 * **Automatic camera detection** – Finds and configures all connected `/dev/video*` devices
@@ -47,18 +59,6 @@ Once initialized, CamForge Dash will:
 * Create recording scripts
 * Start capturing video
 * Automatically resume on reboot
-
----
-
-## ⚠️ Warning
-
-This script will:
-
-* Modify mount points
-* Create cron jobs
-* Continuously write video to attached USB storage
-
-**Do not run on your primary system. Use a dedicated Raspberry Pi.**
 
 ---
 
