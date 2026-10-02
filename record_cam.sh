@@ -37,6 +37,9 @@ fi
 echo "Clearing $usb_loc/cams.txt" |logger -t DASHCAM
 >$usb_loc/cams.txt
 
+# Clear cam scripts folder in case a camera was swapped (avoids system trying to run cams that no longer exist)
+rm -f "$usb_loc/camscripts/*"
+
 # Dump valid /dev/video*'s into cams.txt and force image properties
 echo "Collecting valid /dev/video instances, configuring params and adding to $usb_loc/cams.txt" |logger -t DASHCAM
 for v in $(ls -d /dev/video*)
