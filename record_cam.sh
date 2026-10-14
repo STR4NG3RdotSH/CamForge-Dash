@@ -21,11 +21,31 @@ echo "Deleting /media/*" |logger -t DASHCAM
 rm -rf /media/* |logger -t DASHCAM
 
 #Repair USB filesystem if needed, and re-mount first USB storage found to /media/vids
-echo "Repair USB filesystem if needed, and re-mounting first USB storage found to $usb_loc" |logger -t DASHCAM
-dev=$(readlink -f /dev/disk/by-id/usb-* | head -n1); \
-    part=$(lsblk -rpno NAME,TYPE "$dev" | awk '$2=="part"{print $1; exit}'); \
-    findmnt -rn -S "$part" -T $usb_loc >/dev/null 2>&1 || \
-    { rm -rf $usb_loc; mkdir -p $usb_loc; fsck -ay "$part" |logger -t DASHCAM; mount "$part" $usb_loc |logger -t DASHCAM; rm -f $usb_loc/camscripts/*; }
+echo "Repair USB filesystem if needed, and re-mounting first USB storage found to $usb_loc" | logger -t DASHCAM
+dev=$(readlink -f /dev/disk/by-id/usb-* | head -n1)
+part=$(lsblk -rpno NAME,TYPE "$dev" | awk '$2=="part"{print $1; exit}')
+if [ -z "$part" ]; then
+    part="$dev"
+fi
+if [ -n "$part" ]; then
+    # Only try to mount if it isn't already mounted
+    findmnt -rn -S "$part" -T "$usb_loc" >/dev/null 2>&1 || {
+        rm -rf "$usb_loc"
+        mkdir -p "$usb_loc"
+        # Try fsck, but don't let its failure block the mount attempt
+        fsck -ay "$part" | logger -t DASHCAM || echo "fsck skipped or failed with exit code $?, attempting mount anyway..." | logger -t DASHCAM
+        # Attempt mount and log the exact error if it fails
+        if mount "$part" "$usb_loc" 2>&1 | logger -t DASHCAM; then
+            rm -f "$usb_loc/camscripts/*"
+        else
+            echo "CRITICAL: Failed to mount $part to $usb_loc" | logger -t DASHCAM
+        fi
+    }
+else
+    echo "No USB storage device detected." | logger -t DASHCAM
+fi
+
+
 
 #Now that USB is clean and mounted, check if there is an update on the USB, updating if so
 if [ -f "$usb_loc/record_cam.sh" ] && ! cmp -s "$usb_loc/record_cam.sh" "$home_loc/record_cam.sh"; then
@@ -69,9 +89,10 @@ arecord -l | grep -o 'card [0-9]*' | grep -o '[0-9]*' | grep . >$usb_loc/mics.tx
 echo "For each camera, assigning first identified microphone, collecting serial number and using it to create video scripts and folders" |logger -t DASHCAM
 for cam in $(cat $usb_loc/cams.txt)
 do
-    #collect webcam serial# for unique folder naming, create folders/scripts
-    sn=$(v4l2-ctl --device=$cam --all | grep -oP 'Serial\s*:\s*\K.*')
 
+    #collect webcam usb path for unique folder naming, store it in $sn, create folders/scripts
+    sn=$(udevadm info -q path -n $cam | grep -oP 'usb\d+/[^/]+' | head -n1 | cut -d/ -f2 | tr -dc 'a-zA-Z0-9')
+#for cam in /dev/video*; do if v4l2-ctl --device=$cam --all 2>&1 | grep -q 'Serial\s*:\s*[a-zA-Z0-9]'; then udevadm info -q path -n $cam | grep -oP 'usb\d+/[^/]+' | head -n1 | cut -d/ -f2 | tr -dc 'a-zA-Z0-9'; echo; break; fi; done    
     if [[ -n "${sn//[[:space:]]/}" ]]; then
     #Parse audio devices to record
     mic=$(head -n 1 $usb_loc/mics.txt)

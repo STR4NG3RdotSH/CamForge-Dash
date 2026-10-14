@@ -65,7 +65,7 @@ Once initialized, CamForge Dash will:
 ## 🧠 How It Works
 
 * Detects valid video devices using `v4l2`
-* Assigns each camera a unique folder using its serial number
+* Assigns each camera a unique folder using its usb hardware path
 * Spawns parallel `ffmpeg` processes for simultaneous recording
 * Uses cron jobs for:
 
@@ -77,9 +77,9 @@ Once initialized, CamForge Dash will:
 
 ## 🔧 Requirements
 
-* Raspberry Pi (Pi Zero series sufficient for single camera setups, Pi 4 or better recommended, Pi 5 for 3+ cameras)
-* USB webcams (unique serial numbers required for multi-cam setups. To see if your cam conforms to serial number norms you can run this to see what its SN is: `v4l2-ctl --device=/dev/videoX --all | grep -oP 'Serial\s*:\s*\K.*'` where /dev/videoX is your camera's device path)
-* External USB storage (FAT32 recommended)
+* Raspberry Pi (Pi Zero series sufficient for single camera setups (slow startup, 1+min), Pi 4 or better recommended, Pi 5 for 3+ cameras)
+* USB webcam(s)
+* External USB storage (FAT32 recommended. Fast r/w essential so maybe DON'T use ancient USB drives!)
 * `ffmpeg`, `v4l2-ctl`, `arecord`
 
 ---
