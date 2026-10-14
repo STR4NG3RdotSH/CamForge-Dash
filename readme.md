@@ -59,6 +59,7 @@ Once initialized, CamForge Dash will:
 * Create recording scripts
 * Start capturing video
 * Automatically resume on reboot
+* Automatically update if it detects a new record_cam.sh in the USB storage root (Checks if its different from /home/pi/record_cam.sh, if so it updates /home/pi/record_cam.sh with it, and reboots)
 
 ---
 
@@ -135,16 +136,16 @@ The goal was simple: turn the Raspberry Pi into a self-contained multi-camera da
 ## 🧠 Notes From Long-Term Use
 * Storage reliability is the main failure point (USB health matters most)
 * Powered USB hubs significantly improve multi-camera stability
-* Some low-cost webcams may fail multi-device serial identification
 * System performs best when left fully automated (no manual intervention after boot)
 * 4 cameras seems too much even for Pi5 16g (Starts dropping videos from random cameras). 3 cameras is much more stable but still drops some, while 2 cameras seems fairly flawless.
+* Also built a single camera unit with an old Pi Zero (Not the Zero2/w) and it seems to work as expected, albiet slow to start. Well over 1 minute before it begins recording.
 
 ## ⚙️ Philosophy
 This setup is intentionally unpolished but resilient:
 * No cloud dependency
 * No external time reliance
 * No manual camera configuration
-* Designed to recover itself after power loss or crash
+* Designed to recover itself after power loss or software crash
 
 ## 🧭 Why CamForge Dash Exists
 Most Raspberry Pi dashcam solutions are either overly simplified single-camera scripts or tightly coupled systems that require significant manual setup, configuration tuning, and ongoing maintenance.
