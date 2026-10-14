@@ -1,156 +1,6 @@
 #!/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-#xx This project is almost 4 years in the making and is (and very likely always
-# will be) a work in progress. Although functional and fairly stable, there is
-# tons of room for improvement (I bet my while loops could use work/replacing).
-# Don't hesitate to fork, improve, suggest, etc.
-
-######################################################
-# Idiotproofing
-######################################################
-
-# - This should go without saying, but DO NOT RUN THIS SCRIPT ON YOUR PC... if you
-# - accidentally do, you can stop it by deleting the below files and rebooting: 
-# - /etc/cron.d/keep_alive
-# - /etc/cron.d/cleanup_disk_space
-# - If you DO run this on an unintended machine, it WILL modify your USB mount points and
-# - write to the first USB storage it finds, with videos from every attached camera...forever.
-
-######################################################
-# Setup & Usage
-######################################################
-# - Ensure ffmpeg is installed before running this script
-
-# - Attach usb storage, FAT32 (Partition Type W95 FAT32 (LBA) 
-# - has performed best during testing)
-
-# - Put this script where you expect its permanent home to 
-# - be (NOT the attached USB storage! Suggest home folder, for example /home/pi)
-
-# - Execute this script manually for first run. It will:
-
-# - - Create disk space management script (Ensures USB storage never fills up)
-
-# - - Create keep alive script which ensures cameras restart if ffmpeg stops and 
-# - - ensures cameras start after a reboot
-
-# - - Creates accompanying cron jobs
-
-# - - And finally it will start all attached cameras, saving repeated 60 second 
-# - - clips to the attached USB
-
-# - Once you see ffmpeg writing frames in the terminal, force reboot the Pi (CTRL+C 
-# - won't work, you'll need to cut power manually)
-
-# - From now on, the Pi will begin recording repeated 60 second clips for each camera 
-# - within 60 seconds of loading its operating system.
-
-# - To swap storage, power off the Pi, swap the USB, power on the Pi
-
-# - To swap cameras, power off the Pi, swap the camera(s), power on the Pi. The system
-# - will automatically detect and create supporting scripts for all webcams it finds 
-# - at boot time
-
-######################################################
-# Tips, limitations and troubleshooting
-######################################################
-
-# - For more than 2 cameras, Pi5 is required (Dedicated PCI lane allows 4 simultaneous)
-
-# - Although untested, for single camera setups a Pi Zero2(w) would likely work, 
-# - for 2 I would suggest Pi4
-
-# - Developed using 4 Anker PowerConf C200's. Also tested with Logitech Miro 4k and 
-# - Logitech C922x. The Ankers performed way better.
-
-# - All of the v4l2 settings you will see in the script are for the Anker cameras I tested 
-# - with, if you plan to use another model you will want to comment them out or adjust 
-# - to your liking. Some cameras have different variables to play with, use 
-# - 'v4l2-ctl --device=/dev/video[X] --all' to check what values you can tweak on yours
-
-# - 99% of issues observed during testing were due to file system corruptions. This is 
-# - why storage and the majority of disk writes occur on the USB and not the system 
-# - storage itself, and you'll notice that the script automatically runs a repair on it
-# - every boot, just in case. During testing (This is 3-4 years in development) I've 
-# - ruined one USB drive and have had to reformat USB storage a few times. SO, if having
-# - issues, your first check should be the attached USB storage (Swap/reformat it and see if fixed)
-
-# - One issue unresolved at the moment, I suspect is due to drawing way too much power, is
-# - that 1 or 2 cameras become inconsistent after prolonged use. When this occurs, the rest
-# - of the cameras seem ultra consistent. I'm thinking switching to its own power source
-# - instead of relying on the dash lighter and inverter may resolve it. Seems ultra
-# - stable when powered at my workbench during development. Untested theory. If you're
-# - doing 1 or 2 cameras you likely won't experience this issue.
-
-# - Ensure you use legit cameras, not the cheapest aliexpress junk you can find, as each
-# - camera needs to have its own unique serial number for multiple camera setups. Serial 
-# - numbers are used to ensure each camera always stores its videos in its own unique
-# - folders. In testing I found lots of junk straight-outta-china cameras that all had
-# - identical serial numbers or none at all. If you're just using one camera, by all means 
-# - use the cheapest sensor you can find!
-
-# - Datestamps in video filenames are not a thing, simply because once the Pi is in the
-# - vehicle, it no longer has access to time servers and quickly loses its grasp on
-# - date/time, so this was removed in favor of incremental naming.
-
-# - Read through the script, you'll find variables you may want to tweak, such as how 
-# - much used space the system should start deleting old videos (Default is 80% disk usage)
-# - or how many videos (count) max before it deletes old videos (Default is 5760, 4 full days
-# - worth of 60 second clips)
-
-######################################################
-# My usage, for reference/example
-######################################################
-# - I've been using the below arrangement for about 3+ years, while developing, testing
-# - tweaking and troubleshooting. Very hobbyist/DIY, all enclosed in 3D printed casing
-# - and 3D printed camera mounts. Not perfect by any means, but finally good enough
-# - that I'm comfortable enough to share with the Pi community.
-
-# - The mobile wifi router can be skipped, I only use it so that I can bring a laptop
-# - out to my truck and connect to wifi if I'd like to SSH the Pi and mess with things
-# - as opposed to bringing it into my home, for quick tweaks/tests.
-
-# - The power setup can also be replaced with something more robust if you have the 
-# - space for it (I don't). I bet something like a jackery would power this for weeks.
-
-# - Links to the hardware I'm using below, but all of it can be replaced with any off the
-# - shelf equivalents, although I suggest keeping the Pi5 (or better) and the Anker
-# - cameras (But if you find a better option please let me know!)
-# - Power inverter: https://www.amazon.ca/dp/B08YTH66FN
-# - 3 way power splitter: https://www.amazon.ca/dp/B098CC6W68
-# - USB hubs: https://www.amazon.ca/dp/B000T9S4CI
-# - Pi5 15G: https://www.raspberrypi.com/products/raspberry-pi-5/
-# - Mobile router: https://www.amazon.ca/dp/B01N5RCZQH
-# - Cameras: https://www.amazon.ca/dp/B09MFMTMPD
-#
-#             Vehicle Lighter Port             
-#                       │                      
-#          ┌────────────▼────────────┐         
-#          │Automotive Power Inverter│         
-#          └────────────┬────────────┘
-#              ┌────────▼─────────┐            
-#           ┌──┼3 way pwr splitter┼─┐          
-#           │  └────────┬─────────┘ │
-#       ┌───▼───┐  ┌────▼────┐  ┌───▼───┐      
-#     ┌─┼USB hub┼──┼ Pi5 16G ┼──┼USB hub┼─┐    
-#     │ └┬──┬───┘  └─────┬───┘  └──────┬┘ │
-#     │  │ PWR(USB)   ETHERNET         │  │ 
-#     │  │  │ ┌──────────┼───────┐     │  │    
-#     │  │  └─►Mobile wifi router│     │  │    
-#     │  │    └──────────────────┘     │  │ 
-#     │  └───────┐            ┌────────┘  │ 
-#  ┌──┴───┐   ┌──┴───┐    ┌───┴──┐    ┌───┴──┐ 
-#  │Camera│   │Camera│    │Camera│    │Camera│ 
-#  └──────┘   └──────┘    └──────┘    └──────┘ 
-
-######################################################
-# Thoughts for future
-######################################################
-# - Replace power system
-# - External display to dash to display dashcam logs feed:
-# - - 'journalctl -f -t DASHCAM' is a great live status
-
 ######################################################
 # Setting Global Vars
 ######################################################
@@ -171,11 +21,31 @@ echo "Deleting /media/*" |logger -t DASHCAM
 rm -rf /media/* |logger -t DASHCAM
 
 #Repair USB filesystem if needed, and re-mount first USB storage found to /media/vids
-echo "Repair USB filesystem if needed, and re-mounting first USB storage found to $usb_loc" |logger -t DASHCAM
-dev=$(readlink -f /dev/disk/by-id/usb-* | head -n1); \
-    part=$(lsblk -rpno NAME,TYPE "$dev" | awk '$2=="part"{print $1; exit}'); \
-    findmnt -rn -S "$part" -T $usb_loc >/dev/null 2>&1 || \
-    { rm -rf $usb_loc; mkdir -p $usb_loc; fsck -ay "$part" |logger -t DASHCAM; mount "$part" $usb_loc |logger -t DASHCAM; rm -f $usb_loc/camscripts/*; }
+echo "Repair USB filesystem if needed, and re-mounting first USB storage found to $usb_loc" | logger -t DASHCAM
+dev=$(readlink -f /dev/disk/by-id/usb-* | head -n1)
+part=$(lsblk -rpno NAME,TYPE "$dev" | awk '$2=="part"{print $1; exit}')
+if [ -z "$part" ]; then
+    part="$dev"
+fi
+if [ -n "$part" ]; then
+    # Only try to mount if it isn't already mounted
+    findmnt -rn -S "$part" -T "$usb_loc" >/dev/null 2>&1 || {
+        rm -rf "$usb_loc"
+        mkdir -p "$usb_loc"
+        # Try fsck, but don't let its failure block the mount attempt
+        fsck -ay "$part" | logger -t DASHCAM || echo "fsck skipped or failed with exit code $?, attempting mount anyway..." | logger -t DASHCAM
+        # Attempt mount and log the exact error if it fails
+        if mount "$part" "$usb_loc" 2>&1 | logger -t DASHCAM; then
+            rm -f "$usb_loc/camscripts/*"
+        else
+            echo "CRITICAL: Failed to mount $part to $usb_loc" | logger -t DASHCAM
+        fi
+    }
+else
+    echo "No USB storage device detected." | logger -t DASHCAM
+fi
+
+
 
 #Now that USB is clean and mounted, check if there is an update on the USB, updating if so
 if [ -f "$usb_loc/record_cam.sh" ] && ! cmp -s "$usb_loc/record_cam.sh" "$home_loc/record_cam.sh"; then
@@ -186,6 +56,9 @@ fi
 # Get current cam list and set vdid
 echo "Clearing $usb_loc/cams.txt" |logger -t DASHCAM
 >$usb_loc/cams.txt
+
+# Clear cam scripts folder in case a camera was swapped (avoids system trying to run cams that no longer exist)
+rm -f "$usb_loc/camscripts/*"
 
 # Dump valid /dev/video*'s into cams.txt and force image properties
 echo "Collecting valid /dev/video instances, configuring params and adding to $usb_loc/cams.txt" |logger -t DASHCAM
@@ -216,9 +89,10 @@ arecord -l | grep -o 'card [0-9]*' | grep -o '[0-9]*' | grep . >$usb_loc/mics.tx
 echo "For each camera, assigning first identified microphone, collecting serial number and using it to create video scripts and folders" |logger -t DASHCAM
 for cam in $(cat $usb_loc/cams.txt)
 do
-    #collect webcam serial# for unique folder naming, create folders/scripts
-    sn=$(v4l2-ctl --device=$cam --all | grep -oP 'Serial\s*:\s*\K.*')
 
+    #collect webcam usb path for unique folder naming, store it in $sn, create folders/scripts
+    sn=$(udevadm info -q path -n $cam | grep -oP 'usb\d+/[^/]+' | head -n1 | cut -d/ -f2 | tr -dc 'a-zA-Z0-9')
+#for cam in /dev/video*; do if v4l2-ctl --device=$cam --all 2>&1 | grep -q 'Serial\s*:\s*[a-zA-Z0-9]'; then udevadm info -q path -n $cam | grep -oP 'usb\d+/[^/]+' | head -n1 | cut -d/ -f2 | tr -dc 'a-zA-Z0-9'; echo; break; fi; done    
     if [[ -n "${sn//[[:space:]]/}" ]]; then
     #Parse audio devices to record
     mic=$(head -n 1 $usb_loc/mics.txt)
